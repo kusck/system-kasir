@@ -1,0 +1,30 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Production build output
+dist/
+
+# Environment
+.env
+.env.*
+
+# Database
+*.db
+*.sqlite
+
+# OS or editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Prisma
+prisma/.db
+prisma/pos.db
+
+# Cache
+.cache/

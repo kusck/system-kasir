@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: pos-backend
+    env: node
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromSecret: DATABASE_URL
+      - key: JWT_SECRET
+        fromSecret: JWT_SECRET

@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+
+
+
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  sku         String   @unique
+  barcode     String?  @unique
+  categoryId  Int?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  costPrice   Float
+  sellingPrice Float
+  stock       Int      @default(0)
+  minStock    Int      @default(5)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  items       TransactionItem[]
+}
+
+model Transaction {
+  id            Int      @id @default(autoincrement())
+  invoiceNo     String   @unique
+  totalAmount   Float
+  paymentMethod String
+  paidAmount    Float?
+  changeAmount  Float?
+  referenceNo   String?
+  createdAt     DateTime @default(now())
+  items         TransactionItem[]
+  cashLogs      CashLog[]
+}
+
+model TransactionItem {
+  id            Int      @id @default(autoincrement())
+  transactionId Int
+  productId     Int
+  productName   String
+  qty           Int
+  price         Float
+  subtotal      Float
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  product       Product @relation(fields: [productId], references: [id])
+}
+
+model CashLog {
+  id            Int      @id @default(autoincrement())
+  type          String
+  source        String
+  amount        Float
+  description   String?
+  transactionId Int?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  createdAt     DateTime @default(now())
+}
