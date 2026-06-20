@@ -3,15 +3,23 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"node server/index.js\" \"vite --host 0.0.0.0\"",
-    "start": "node server/index.js",
+    "dev": "vite",
     "build": "vite build",
+    "preview": "vite preview",
+
+    "prisma:verify": "node scripts/verify-database-url.cjs",
+    "prisma:generate": "npm run prisma:verify && prisma generate",
+    "prisma:validate": "npm run prisma:verify && prisma validate",
+    "prisma:dbpush": "npm run prisma:verify && prisma db push",
+
+    "postinstall": "npm run prisma:generate",
+    "prepare": "npm run prisma:generate",
+
     "seed": "node prisma/seed.js",
-    "prepare": "prisma generate",
     "studio": "npx prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "^5.14.0",
+    "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.108.2",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
@@ -20,8 +28,9 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.0",
     "concurrently": "^8.2.0",
+    "dotenv-cli": "^11.0.0",
     "lucide-react": "^1.20.0",
-    "prisma": "^5.14.0",
+    "prisma": "^5.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "vite": "^8.0.0"

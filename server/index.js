@@ -16,3 +16,4 @@ app.get('*', (_, res) => {
 });
 
 app.listen(PORT, () => console.log(`POS API berjalan di http://localhost:${PORT}`));
+        
