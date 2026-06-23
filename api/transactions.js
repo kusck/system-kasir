@@ -6,21 +6,24 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const action = req.query.action || '';
+  const branchId = Number(req.query.branchId);
 
   try {
-    // GET /api/transactions
     if (req.method === 'GET') {
+      if (!branchId) return res.status(400).json({ message: 'branchId wajib diisi' });
       const transactions = await prisma.transaction.findMany({
+        where: { branchId },
         include: { items: true },
         orderBy: { id: 'desc' }
       });
       return res.json(transactions);
     }
 
-    // POST /api/transactions?action=checkout
     if (req.method === 'POST' && action === 'checkout') {
-      const { items, paymentMethod, paidAmount, referenceNo } = req.body;
+      const { items, paymentMethod, paidAmount, referenceNo, branchId: bId } = req.body;
+      const bid = Number(bId);
       if (!items?.length) return res.status(400).json({ message: 'Keranjang masih kosong' });
+      if (!bid) return res.status(400).json({ message: 'branchId wajib diisi' });
 
       const transaction = await prisma.$transaction(async (tx) => {
         let total = 0;
@@ -29,6 +32,7 @@ module.exports = async (req, res) => {
         for (const item of items) {
           const product = await tx.product.findUnique({ where: { id: Number(item.id || item.productId) } });
           if (!product) throw new Error('Produk tidak ditemukan');
+          if (product.branchId !== bid) throw new Error('Produk bukan milik cabang ini');
           if (product.stock < Number(item.qty)) throw new Error(`Stok ${product.name} tidak cukup. Sisa ${product.stock}`);
           const subtotal = product.sellingPrice * Number(item.qty);
           total += subtotal;
@@ -48,6 +52,7 @@ module.exports = async (req, res) => {
             paidAmount: paid,
             changeAmount: change,
             referenceNo: referenceNo || null,
+            branchId: bid,
             items: {
               create: checked.map(({ product, qty, subtotal }) => ({
                 productId: product.id,
@@ -66,12 +71,12 @@ module.exports = async (req, res) => {
         }
 
         await tx.cashLog.create({
-          data: { type: 'IN', source: 'SALE', amount: total, description: `Penjualan ${created.invoiceNo}`, transactionId: created.id }
+          data: { type: 'IN', source: 'SALE', amount: total, branchId: bid, description: `Penjualan ${created.invoiceNo}`, transactionId: created.id }
         });
 
         if (paymentMethod === 'CASH' && change > 0) {
           await tx.cashLog.create({
-            data: { type: 'OUT', source: 'REFUND', amount: change, description: `Kembalian ${created.invoiceNo}`, transactionId: created.id }
+            data: { type: 'OUT', source: 'REFUND', amount: change, branchId: bid, description: `Kembalian ${created.invoiceNo}`, transactionId: created.id }
           });
         }
 

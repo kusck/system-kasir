@@ -8,49 +8,74 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Branch {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  users        User[]
+  products     Product[]
+  transactions Transaction[]
+  cashLogs     CashLog[]
+  categories   Category[]
+}
 
-
-
-
-
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      String   // 'kasir' | 'owner'
+  branchId  Int?
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+  createdAt DateTime @default(now())
+}
 
 model Category {
   id       Int       @id @default(autoincrement())
-  name     String    @unique
+  name     String
+  branchId Int
+  branch   Branch    @relation(fields: [branchId], references: [id])
   products Product[]
+
+  @@unique([name, branchId])
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
-  name        String
-  sku         String   @unique
-  barcode     String?  @unique
-  categoryId  Int?
-  category    Category? @relation(fields: [categoryId], references: [id])
-  costPrice   Float
+  id           Int              @id @default(autoincrement())
+  name         String
+  sku          String
+  barcode      String?
+  categoryId   Int?
+  category     Category?        @relation(fields: [categoryId], references: [id])
+  branchId     Int
+  branch       Branch           @relation(fields: [branchId], references: [id])
+  costPrice    Float
   sellingPrice Float
-  stock       Int      @default(0)
-  minStock    Int      @default(5)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  items       TransactionItem[]
+  stock        Int              @default(0)
+  minStock     Int              @default(5)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  items        TransactionItem[]
+
+  @@unique([sku, branchId])
+  @@unique([barcode, branchId])
 }
 
 model Transaction {
-  id            Int      @id @default(autoincrement())
-  invoiceNo     String   @unique
+  id            Int               @id @default(autoincrement())
+  invoiceNo     String            @unique
   totalAmount   Float
   paymentMethod String
   paidAmount    Float?
   changeAmount  Float?
   referenceNo   String?
-  createdAt     DateTime @default(now())
+  branchId      Int
+  branch        Branch            @relation(fields: [branchId], references: [id])
+  createdAt     DateTime          @default(now())
   items         TransactionItem[]
   cashLogs      CashLog[]
 }
 
 model TransactionItem {
-  id            Int      @id @default(autoincrement())
+  id            Int         @id @default(autoincrement())
   transactionId Int
   productId     Int
   productName   String
@@ -58,16 +83,18 @@ model TransactionItem {
   price         Float
   subtotal      Float
   transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  product       Product @relation(fields: [productId], references: [id])
+  product       Product     @relation(fields: [productId], references: [id])
 }
 
 model CashLog {
-  id            Int      @id @default(autoincrement())
+  id            Int          @id @default(autoincrement())
   type          String
   source        String
   amount        Float
   description   String?
   transactionId Int?
+  branchId      Int
+  branch        Branch       @relation(fields: [branchId], references: [id])
   transaction   Transaction? @relation(fields: [transactionId], references: [id])
-  createdAt     DateTime @default(now())
+  createdAt     DateTime     @default(now())
 }

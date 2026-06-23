@@ -5,19 +5,31 @@ module.exports = async (req, res) => {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // action bisa dari query param (?action=logs) atau dari path (/api/cash/logs)
   const action = req.query.action || '';
 
+  // branchId dari query (GET) atau body (POST)
+  const branchId = req.method === 'GET'
+    ? Number(req.query.branchId)
+    : Number(req.body?.branchId);
+
+  // owner bisa lihat semua cabang (branchId=0 atau tidak diisi)
+  const role = req.query.role || req.body?.role || '';
+
   try {
-    // GET /api/cash/logs
     if (req.method === 'GET' && action === 'logs') {
-      const logs = await prisma.cashLog.findMany({ orderBy: { id: 'desc' }, take: 100 });
+      const where = (role === 'owner' && !branchId) ? {} : { branchId };
+      const logs = await prisma.cashLog.findMany({
+        where,
+        include: { branch: true },
+        orderBy: { id: 'desc' },
+        take: 200
+      });
       return res.json(logs);
     }
 
-    // GET /api/cash/summary
     if (req.method === 'GET' && action === 'summary') {
-      const logs = await prisma.cashLog.findMany();
+      const where = (role === 'owner' && !branchId) ? {} : { branchId };
+      const logs = await prisma.cashLog.findMany({ where });
       const sales       = logs.filter(l => l.type === 'IN'  && l.source === 'SALE').reduce((a, b) => a + b.amount, 0);
       const deposit     = logs.filter(l => l.type === 'IN'  && l.source === 'DEPOSIT').reduce((a, b) => a + b.amount, 0);
       const otherIncome = logs.filter(l => l.type === 'IN'  && l.source !== 'SALE' && l.source !== 'DEPOSIT').reduce((a, b) => a + b.amount, 0);
@@ -29,62 +41,52 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      // POST /api/cash/in
+      if (!branchId) return res.status(400).json({ message: 'branchId wajib diisi' });
+
       if (action === 'in') {
         const { amount, description, source } = req.body;
         if (!amount) return res.status(400).json({ message: 'Nominal wajib diisi' });
         const log = await prisma.cashLog.create({
-          data: { type: 'IN', source: source || 'INCOME', amount: rupiah(amount), description }
+          data: { type: 'IN', source: source || 'INCOME', amount: rupiah(amount), description, branchId }
         });
         return res.json(log);
       }
 
-      // POST /api/cash/out
       if (action === 'out') {
         const { amount, description, source } = req.body;
         if (!amount) return res.status(400).json({ message: 'Nominal wajib diisi' });
         const log = await prisma.cashLog.create({
-          data: { type: 'OUT', source: source || 'EXPENSE', amount: rupiah(amount), description }
+          data: { type: 'OUT', source: source || 'EXPENSE', amount: rupiah(amount), description, branchId }
         });
         return res.json(log);
       }
 
-      // POST /api/cash/refund
-      if (action === 'refund') {
-        const { amount, description, transactionId } = req.body;
-        if (!amount) return res.status(400).json({ message: 'Nominal kembalian wajib diisi' });
-        const log = await prisma.cashLog.create({
-          data: {
-            type: 'OUT', source: 'REFUND', amount: rupiah(amount),
-            description: description || 'Kembalian/Retur Penjualan',
-            transactionId: transactionId ? Number(transactionId) : null
-          }
-        });
-        return res.json(log);
-      }
-
-      // POST /api/cash/deposit
       if (action === 'deposit') {
         const { amount, description, paymentMethod } = req.body;
         if (!amount) return res.status(400).json({ message: 'Nominal setoran wajib diisi' });
         const log = await prisma.cashLog.create({
-          data: {
-            type: 'IN', source: 'DEPOSIT', amount: rupiah(amount),
-            description: description || `Setoran ${paymentMethod || 'Dana'}`
-          }
+          data: { type: 'IN', source: 'DEPOSIT', amount: rupiah(amount), description: description || `Setoran ${paymentMethod || 'Dana'}`, branchId }
         });
         return res.json(log);
       }
 
-      // POST /api/cash/reset
+      if (action === 'refund') {
+        const { amount, description, transactionId } = req.body;
+        if (!amount) return res.status(400).json({ message: 'Nominal kembalian wajib diisi' });
+        const log = await prisma.cashLog.create({
+          data: { type: 'OUT', source: 'REFUND', amount: rupiah(amount), description: description || 'Kembalian/Retur', branchId, transactionId: transactionId ? Number(transactionId) : null }
+        });
+        return res.json(log);
+      }
+
       if (action === 'reset') {
-        await prisma.cashLog.deleteMany();
-        return res.json({ success: true, message: 'Semua catatan buku kas telah di-reset.' });
+        const where = (role === 'owner' && !branchId) ? {} : { branchId };
+        await prisma.cashLog.deleteMany({ where });
+        return res.json({ success: true, message: 'Catatan kas berhasil di-reset.' });
       }
     }
 
-    // fallback: tampilkan info action yang tersedia
-    res.status(400).json({ message: `Action "${action}" tidak dikenal. Tersedia: logs, summary, in, out, refund, deposit, reset` });
+    res.status(400).json({ message: `Action "${action}" tidak dikenal` });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

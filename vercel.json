@@ -5,6 +5,7 @@
   "installCommand": "npm install",
   "rewrites": [
     { "source": "/api/health",                    "destination": "/api/health" },
+    { "source": "/api/auth",                      "destination": "/api/auth" },
     { "source": "/api/categories",               "destination": "/api/categories" },
     { "source": "/api/products/low-stock",        "destination": "/api/products/low-stock" },
     { "source": "/api/products/barcode/:barcode", "destination": "/api/products/barcode/[barcode]?barcode=:barcode" },

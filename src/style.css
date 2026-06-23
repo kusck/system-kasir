@@ -220,3 +220,22 @@ td button:active{transform:scale(0.95)}
 }
 
 @media print{html,body{width:100%;height:auto;overflow:visible!important}body *{display:none!important;visibility:hidden!important}.receipt,.receipt *{display:block!important;visibility:visible!important}.receipt{display:block!important;position:fixed!important;left:50%!important;top:0!important;transform:translateX(-50%)!important;width:58mm!important;max-width:100%!important;height:auto!important;margin:0!important;padding:6px!important;font-family:monospace!important;font-size:11px!important;color:#000!important;background:#fff!important;z-index:9999!important}.receipt h2{text-align:center;margin:0 0 6px;font-size:15px}.receipt p{margin:4px 0}.no-print,.mobile-nav,.sidebar{display:none!important;visibility:hidden!important}@page{size:58mm auto;margin:0}}
+
+/* Login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f766e,#0ea5a4)}
+.login-card{background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.15)}
+.login-card h1{font-size:18px;font-weight:800;color:#073033;margin:0 0 6px;text-align:center}
+.login-sub{text-align:center;color:#6b7280;font-size:14px;margin:0 0 24px}
+.login-card input{width:100%;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:12px;box-sizing:border-box}
+.login-error{background:#fee2e2;color:#dc2626;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px}
+
+/* Branch badge & user info */
+.branch-badge{background:linear-gradient(90deg,#0f766e,#0ea5a4);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:4px;text-align:center}
+.user-info{font-size:12px;color:#6b7280;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.role-tag{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase}
+.role-tag.owner{background:#fef3c7;color:#92400e}
+.role-tag.kasir{background:#dbeafe;color:#1e40af}
+
+/* Logout button */
+.logout-btn{margin-top:auto!important;background:#fee2e2!important;color:#dc2626!important}
+.logout-btn:hover{background:#fecaca!important}

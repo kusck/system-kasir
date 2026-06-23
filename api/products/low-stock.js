@@ -5,8 +5,14 @@ module.exports = async (req, res) => {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const branchId = Number(req.query.branchId);
+  if (!branchId) return res.status(400).json({ message: 'branchId wajib diisi' });
+
   try {
-    const products = await prisma.product.findMany({ include: { category: true } });
+    const products = await prisma.product.findMany({
+      where: { branchId },
+      include: { category: true }
+    });
     res.json(products.filter(p => p.stock < p.minStock));
   } catch (e) {
     res.status(500).json({ message: e.message });

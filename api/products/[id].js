@@ -6,9 +6,9 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const id = Number(req.query.id);
+  const branchId = Number(req.query.branchId);
 
   try {
-    // PUT /api/products/:id
     if (req.method === 'PUT') {
       const data = req.body;
       const product = await prisma.product.update({
@@ -27,7 +27,6 @@ module.exports = async (req, res) => {
       return res.json(product);
     }
 
-    // DELETE /api/products/:id
     if (req.method === 'DELETE') {
       await prisma.product.delete({ where: { id } });
       return res.json({ success: true });

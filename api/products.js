@@ -5,25 +5,27 @@ module.exports = async (req, res) => {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const branchId = Number(req.query.branchId);
+  if (!branchId) return res.status(400).json({ message: 'branchId wajib diisi' });
+
   try {
-    // GET /api/products?q=...
     if (req.method === 'GET') {
       const q = req.query.q || '';
       const products = await prisma.product.findMany({
-        where: q ? {
-          OR: [
+        where: {
+          branchId,
+          ...(q ? { OR: [
             { name: { contains: q, mode: 'insensitive' } },
             { sku: { contains: q, mode: 'insensitive' } },
             { barcode: { contains: q } }
-          ]
-        } : {},
+          ]} : {})
+        },
         include: { category: true },
         orderBy: { id: 'desc' }
       });
       return res.json(products);
     }
 
-    // POST /api/products
     if (req.method === 'POST') {
       const data = req.body;
       const product = await prisma.product.create({
@@ -32,6 +34,7 @@ module.exports = async (req, res) => {
           sku: data.sku,
           barcode: data.barcode || null,
           categoryId: data.categoryId ? Number(data.categoryId) : null,
+          branchId,
           costPrice: rupiah(data.costPrice),
           sellingPrice: rupiah(data.sellingPrice),
           stock: Number(data.stock || 0),
