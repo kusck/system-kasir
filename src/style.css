@@ -239,3 +239,25 @@ td button:active{transform:scale(0.95)}
 /* Logout button */
 .logout-btn{margin-top:auto!important;background:#fee2e2!important;color:#dc2626!important}
 .logout-btn:hover{background:#fecaca!important}
+
+/* Inventory Form */
+.inv-form-panel{margin-bottom:18px}
+.inv-form-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.inv-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.inv-field{display:flex;flex-direction:column;gap:5px}
+.inv-field.full{grid-column:1/-1}
+.inv-field label{font-size:12px;font-weight:600;color:#374151}
+.inv-field input,.inv-field select{padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px}
+.inv-field input:focus,.inv-field select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(15,118,110,0.1)}
+.inv-actions{display:flex;gap:10px;flex-wrap:wrap}
+.req{color:#dc2626}
+.auto-tag{background:#d1fae5;color:#065f46;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;margin-left:4px}
+.input-with-btn{display:flex;gap:6px}
+.input-with-btn input{flex:1}
+.btn-regen{padding:9px 12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:14px;white-space:nowrap}
+.btn-regen:hover{background:#e2e8f0}
+.btn-secondary{padding:10px 16px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:#374151}
+.btn-secondary:hover{background:#e2e8f0}
+.cat-form{display:flex;gap:8px;margin-bottom:14px;align-items:center}
+.cat-form input{flex:1;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px}
+@media(max-width:600px){.inv-grid{grid-template-columns:1fr}.inv-field.full{grid-column:1}}

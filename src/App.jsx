@@ -271,52 +271,202 @@ function Inventory({ products, categories, loadAll, branchId, isOwner }) {
   const blank = { name: '', sku: '', barcode: '', categoryId: '', costPrice: '', sellingPrice: '', stock: '', minStock: 5 };
   const [form, setForm] = useState(blank);
   const [editingId, setEditingId] = useState(null);
+  const [newCategory, setNewCategory] = useState('');
+  const [showCatForm, setShowCatForm] = useState(false);
   const API_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+  // Generate SKU otomatis dari nama produk
+  function generateSKU(name) {
+    if (!name) return '';
+    const words = name.trim().toUpperCase().split(/\s+/);
+    const prefix = words.map(w => w.slice(0, 3)).join('-').slice(0, 12);
+    const num = String(Math.floor(Math.random() * 900) + 100);
+    return `${prefix}-${num}`;
+  }
+
+  // Generate barcode otomatis (13 digit EAN-style)
+  function generateBarcode() {
+    const base = '899' + String(Date.now()).slice(-7) + String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+    return base.slice(0, 13);
+  }
+
+  // Saat nama diubah, auto-generate SKU & barcode kalau belum diisi manual
+  function handleNameChange(val) {
+    setForm(prev => ({
+      ...prev,
+      name: val,
+      sku: prev.sku === '' || prev.sku === generateSKU(prev.name) ? generateSKU(val) : prev.sku,
+      barcode: prev.barcode === '' ? generateBarcode() : prev.barcode
+    }));
+  }
+
+  // Regenerate SKU manual
+  function regenSKU() { setForm(prev => ({ ...prev, sku: generateSKU(prev.name) })); }
+  // Regenerate barcode manual
+  function regenBarcode() { setForm(prev => ({ ...prev, barcode: generateBarcode() })); }
 
   async function save(e) {
     e.preventDefault();
     const url = `${API_URL}/products${editingId ? '/' + editingId : ''}?branchId=${branchId}`;
-    await fetch(url, { method: editingId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, branchId }) });
+    const res = await fetch(url, {
+      method: editingId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...form, branchId })
+    });
+    const data = await res.json();
+    if (!res.ok) return alert(data?.message || 'Gagal menyimpan');
     setForm(blank); setEditingId(null); loadAll();
   }
 
   async function del(id) {
     if (!isOwner) return alert('Hanya owner yang bisa menghapus produk');
-    if (confirm('Hapus barang?')) { await fetch(`${API_URL}/products/${id}?branchId=${branchId}`, { method: 'DELETE' }); loadAll(); }
+    if (confirm('Hapus barang?')) {
+      await fetch(`${API_URL}/products/${id}?branchId=${branchId}`, { method: 'DELETE' });
+      loadAll();
+    }
+  }
+
+  async function saveCategory(e) {
+    e.preventDefault();
+    if (!newCategory.trim()) return;
+    await fetch(`${API_URL}/categories?branchId=${branchId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newCategory.trim(), branchId })
+    });
+    setNewCategory('');
+    setShowCatForm(false);
+    loadAll();
   }
 
   return (
     <div>
-      <div className="topbar"><h2>Inventory</h2><span>Stok {isOwner ? '(mode owner)' : 'cabang ini'}</span></div>
+      <div className="topbar">
+        <h2>Inventory</h2>
+        <span>Stok {isOwner ? '(mode owner)' : 'cabang ini'}</span>
+      </div>
+
       {isOwner && (
-        <form className="form-grid panel" onSubmit={save}>
-          {['name','sku','barcode','costPrice','sellingPrice','stock','minStock'].map(k => (
-            <input key={k} required={k !== 'barcode'} value={form[k]} onChange={e => setForm({...form,[k]:e.target.value})} placeholder={k}/>
-          ))}
-          <select value={form.categoryId} onChange={e => setForm({...form, categoryId: e.target.value})}>
-            <option value="">Kategori</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <button className="checkout">{editingId ? 'Update Barang' : 'Tambah Barang'}</button>
-          {editingId && <button type="button" onClick={() => { setForm(blank); setEditingId(null); }}>Batal</button>}
-        </form>
+        <div className="panel inv-form-panel">
+          <div className="inv-form-header">
+            <h3 style={{margin:0}}>{editingId ? '✏️ Edit Produk' : '➕ Tambah Produk Baru'}</h3>
+            <div style={{display:'flex',gap:'8px',alignItems:'center'}}>
+              <button type="button" className="btn-secondary" onClick={() => setShowCatForm(v => !v)}>
+                + Kategori Baru
+              </button>
+            </div>
+          </div>
+
+          {/* Form tambah kategori */}
+          {showCatForm && (
+            <form className="cat-form" onSubmit={saveCategory}>
+              <input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Nama kategori baru" required />
+              <button className="checkout" type="submit">Simpan</button>
+              <button type="button" className="btn-secondary" onClick={() => setShowCatForm(false)}>Batal</button>
+            </form>
+          )}
+
+          <form onSubmit={save}>
+            <div className="inv-grid">
+              {/* Nama */}
+              <div className="inv-field full">
+                <label>Nama Produk <span className="req">*</span></label>
+                <input
+                  value={form.name}
+                  onChange={e => handleNameChange(e.target.value)}
+                  placeholder="Contoh: Nasi Timbel Ayam"
+                  required
+                />
+              </div>
+
+              {/* SKU */}
+              <div className="inv-field">
+                <label>SKU <span className="req">*</span> <span className="auto-tag">otomatis</span></label>
+                <div className="input-with-btn">
+                  <input value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} placeholder="SKU produk" required />
+                  <button type="button" className="btn-regen" onClick={regenSKU} title="Generate ulang SKU">🔄</button>
+                </div>
+              </div>
+
+              {/* Barcode */}
+              <div className="inv-field">
+                <label>Barcode <span className="auto-tag">otomatis</span></label>
+                <div className="input-with-btn">
+                  <input value={form.barcode} onChange={e => setForm({...form, barcode: e.target.value})} placeholder="Barcode (opsional)" />
+                  <button type="button" className="btn-regen" onClick={regenBarcode} title="Generate ulang barcode">🔄</button>
+                </div>
+              </div>
+
+              {/* Kategori */}
+              <div className="inv-field">
+                <label>Kategori</label>
+                <select value={form.categoryId} onChange={e => setForm({...form, categoryId: e.target.value})}>
+                  <option value="">Pilih Kategori</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              {/* Harga Modal */}
+              <div className="inv-field">
+                <label>Harga Modal (Rp) <span className="req">*</span></label>
+                <input type="number" value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} placeholder="0" required min="0" />
+              </div>
+
+              {/* Harga Jual */}
+              <div className="inv-field">
+                <label>Harga Jual (Rp) <span className="req">*</span></label>
+                <input type="number" value={form.sellingPrice} onChange={e => setForm({...form, sellingPrice: e.target.value})} placeholder="0" required min="0" />
+              </div>
+
+              {/* Stok */}
+              <div className="inv-field">
+                <label>Stok Awal <span className="req">*</span></label>
+                <input type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} placeholder="0" required min="0" />
+              </div>
+
+              {/* Stok Minimum */}
+              <div className="inv-field">
+                <label>Stok Minimum</label>
+                <input type="number" value={form.minStock} onChange={e => setForm({...form, minStock: e.target.value})} placeholder="5" min="0" />
+              </div>
+            </div>
+
+            <div className="inv-actions">
+              <button className="checkout" type="submit">{editingId ? '💾 Update Produk' : '✅ Simpan Produk'}</button>
+              {editingId && (
+                <button type="button" className="btn-secondary" onClick={() => { setForm(blank); setEditingId(null); }}>
+                  Batal Edit
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
       )}
+
+      {/* Tabel produk */}
       <div className="panel table-wrap">
+        <div className="table-toolbar">
+          <h3 style={{margin:0}}>Daftar Produk ({products.length})</h3>
+        </div>
         <table>
-          <thead><tr><th>Nama</th><th>Kategori</th><th>SKU</th><th>Harga Jual</th><th>Stok</th><th>Aksi</th></tr></thead>
+          <thead>
+            <tr><th>Nama</th><th>Kategori</th><th>SKU</th><th>Barcode</th><th>Harga Jual</th><th>Stok</th>{isOwner && <th>Aksi</th>}</tr>
+          </thead>
           <tbody>
             {products.map(p => (
               <tr key={p.id}>
                 <td>{p.name}</td>
                 <td><span className="badge">{categories.find(c => c.id === p.categoryId)?.name || 'Umum'}</span></td>
-                <td>{p.sku}</td>
+                <td><code style={{fontSize:'12px'}}>{p.sku}</code></td>
+                <td><code style={{fontSize:'11px',color:'#6b7280'}}>{p.barcode || '—'}</code></td>
                 <td>{money(p.sellingPrice)}</td>
                 <td className={p.stock < p.minStock ? 'danger' : ''}>{p.stock}</td>
-                <td>
-                  {isOwner && <button onClick={() => { setEditingId(p.id); setForm({...p, categoryId: p.categoryId || ''}); }}>Edit</button>}
-                  {isOwner && <button onClick={() => del(p.id)}>Hapus</button>}
-                  {!isOwner && <span style={{color:'#999',fontSize:'12px'}}>—</span>}
-                </td>
+                {isOwner && (
+                  <td>
+                    <button onClick={() => { setEditingId(p.id); setForm({...p, categoryId: p.categoryId || ''}); }}>Edit</button>
+                    <button onClick={() => del(p.id)}>Hapus</button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
