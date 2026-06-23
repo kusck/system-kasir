@@ -1,8 +1,17 @@
 const { PrismaClient } = require('@prisma/client');
 
-// Reuse PrismaClient instance di serverless environment
-const globalForPrisma = global;
-const prisma = globalForPrisma.prisma ?? new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+let prisma;
+
+if (!global._prisma) {
+  global._prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL
+      }
+    }
+  });
+}
+
+prisma = global._prisma;
 
 module.exports = prisma;
