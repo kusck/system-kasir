@@ -21,7 +21,7 @@ const initialProducts = [
   { id: 9, name: 'Tempe Mendoan', sku: 'SND003', barcode: '8901000000096', categoryId: 'sunda', costPrice: 9000, sellingPrice: 18000, stock: 20, minStock: 8 }
 ];
 
-const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
+const API = import.meta.env.VITE_API_BASE_URL || '/api';
 const money = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(n || 0));
 
 function App() {
