@@ -6,15 +6,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-
+    "start": "node server/index.js",
     "prisma:verify": "node scripts/verify-database-url.cjs",
     "prisma:generate": "npm run prisma:verify && prisma generate",
     "prisma:validate": "npm run prisma:verify && prisma validate",
     "prisma:dbpush": "npm run prisma:verify && prisma db push",
-
     "postinstall": "npm run prisma:generate",
     "prepare": "npm run prisma:generate",
-
     "seed": "node prisma/seed.js",
     "studio": "npx prisma studio"
   },

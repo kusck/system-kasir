@@ -1,15 +1,19 @@
 services:
   - type: web
-    name: pos-backend
+    name: pos-kasir
     env: node
-    plan: starter
-    region: oregon
+    plan: free
+    region: singapore
     branch: main
     buildCommand: npm install && npm run build
     startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        fromSecret: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
       - key: JWT_SECRET
-        fromSecret: JWT_SECRET
+        sync: false
+      - key: NODE_ENV
+        value: production

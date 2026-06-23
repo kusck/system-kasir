@@ -10,9 +10,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use('/api', require('./routes/api'));
-app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve frontend dari dist/ (hasil vite build)
+app.use(express.static(path.join(__dirname, '../dist')));
 app.get('*', (_, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 app.listen(PORT, () => console.log(`POS API berjalan di http://localhost:${PORT}`));
