@@ -5,16 +5,17 @@ module.exports = async (req, res) => {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const action = req.query.action;
+  // action bisa dari query param (?action=logs) atau dari path (/api/cash/logs)
+  const action = req.query.action || '';
 
   try {
-    // GET /api/cash?action=logs
+    // GET /api/cash/logs
     if (req.method === 'GET' && action === 'logs') {
       const logs = await prisma.cashLog.findMany({ orderBy: { id: 'desc' }, take: 100 });
       return res.json(logs);
     }
 
-    // GET /api/cash?action=summary
+    // GET /api/cash/summary
     if (req.method === 'GET' && action === 'summary') {
       const logs = await prisma.cashLog.findMany();
       const sales       = logs.filter(l => l.type === 'IN'  && l.source === 'SALE').reduce((a, b) => a + b.amount, 0);
@@ -28,25 +29,27 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      // POST /api/cash?action=in
+      // POST /api/cash/in
       if (action === 'in') {
         const { amount, description, source } = req.body;
+        if (!amount) return res.status(400).json({ message: 'Nominal wajib diisi' });
         const log = await prisma.cashLog.create({
           data: { type: 'IN', source: source || 'INCOME', amount: rupiah(amount), description }
         });
         return res.json(log);
       }
 
-      // POST /api/cash?action=out
+      // POST /api/cash/out
       if (action === 'out') {
         const { amount, description, source } = req.body;
+        if (!amount) return res.status(400).json({ message: 'Nominal wajib diisi' });
         const log = await prisma.cashLog.create({
           data: { type: 'OUT', source: source || 'EXPENSE', amount: rupiah(amount), description }
         });
         return res.json(log);
       }
 
-      // POST /api/cash?action=refund
+      // POST /api/cash/refund
       if (action === 'refund') {
         const { amount, description, transactionId } = req.body;
         if (!amount) return res.status(400).json({ message: 'Nominal kembalian wajib diisi' });
@@ -60,7 +63,7 @@ module.exports = async (req, res) => {
         return res.json(log);
       }
 
-      // POST /api/cash?action=deposit
+      // POST /api/cash/deposit
       if (action === 'deposit') {
         const { amount, description, paymentMethod } = req.body;
         if (!amount) return res.status(400).json({ message: 'Nominal setoran wajib diisi' });
@@ -73,14 +76,15 @@ module.exports = async (req, res) => {
         return res.json(log);
       }
 
-      // POST /api/cash?action=reset
+      // POST /api/cash/reset
       if (action === 'reset') {
         await prisma.cashLog.deleteMany();
         return res.json({ success: true, message: 'Semua catatan buku kas telah di-reset.' });
       }
     }
 
-    res.status(400).json({ message: 'Action tidak dikenal' });
+    // fallback: tampilkan info action yang tersedia
+    res.status(400).json({ message: `Action "${action}" tidak dikenal. Tersedia: logs, summary, in, out, refund, deposit, reset` });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

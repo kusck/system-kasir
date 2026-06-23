@@ -5,7 +5,7 @@ module.exports = async (req, res) => {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const action = req.query.action;
+  const action = req.query.action || '';
 
   try {
     // GET /api/transactions
