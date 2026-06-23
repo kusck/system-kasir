@@ -1,19 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
 
 export default defineConfig({
   root: 'src',
-  base: './',
+  base: '/',
   publicDir: false,
   build: {
-    outDir: '../public',
+    outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        entryFileNames: 'js/[name].js',
-        chunkFileNames: 'js/[name].js',
+        entryFileNames: 'assets/js/[name].js',
+        chunkFileNames: 'assets/js/[name].js',
         assetFileNames: ({ name }) => {
-          if (name && name.endsWith('.css')) return 'css/[name]';
+          if (name && name.endsWith('.css')) return 'assets/css/[name]';
           return 'assets/[name][extname]';
         }
       }
