@@ -75,30 +75,55 @@ function App() {
   const [printReady, setPrintReady] = useState(false);
   const barcodeRef = useRef(null);
 
-  if (!session) return <LoginPage onLogin={s => { saveSession(s); setSession(s); }} />;
+  const branchId = session?.branchId;
+  const isOwner = session?.role === 'owner';
+  const branchLabel = session?.branchName || 'Semua Cabang';
 
-  const branchId = session.branchId;
-  const isOwner = session.role === 'owner';
-  const branchQuery = branchId ? `?branchId=${branchId}` : '';
-  const roleQuery = isOwner ? `&role=owner` : '';
-
-  async function loadAll() {
+  async function loadAll(sess) {
+    const s = sess || session;
+    if (!s) return;
+    const bid = s.branchId;
+    const owner = s.role === 'owner';
     try {
-      const bq = branchId ? `branchId=${branchId}` : '';
-      const rq = isOwner ? `role=owner` : '';
-      const [p, c, s, l] = await Promise.all([
-        branchId ? fetch(`${API}/products?${bq}`).then(r => r.json()) : Promise.resolve([]),
-        branchId ? fetch(`${API}/categories?${bq}`).then(r => r.json()) : Promise.resolve([]),
-        fetch(`${API}/cash/${isOwner ? 'summary' : 'summary'}?${bq}&${rq}`).then(r => r.json()),
-        fetch(`${API}/cash/logs?${bq}&${rq}`).then(r => r.json()),
+      const bq = bid ? `branchId=${bid}` : '';
+      const rq = owner ? `role=owner` : '';
+      const sep = bq && rq ? '&' : '';
+      const [p, c, sm, l] = await Promise.all([
+        bid ? fetch(`${API}/products?${bq}`).then(r => r.json()) : Promise.resolve([]),
+        bid ? fetch(`${API}/categories?${bq}`).then(r => r.json()) : Promise.resolve([]),
+        fetch(`${API}/cash/summary?${bq}${sep}${rq}`).then(r => r.json()),
+        fetch(`${API}/cash/logs?${bq}${sep}${rq}`).then(r => r.json()),
       ]);
       setProducts(Array.isArray(p) ? p : []);
       setCategories(Array.isArray(c) ? c : []);
-      setSummary(s);
+      setSummary(sm);
       setCashLogs(Array.isArray(l) ? l : []);
     } catch (err) {
       console.warn('Gagal load data', err);
     }
+  }
+
+  function handleLogin(s) {
+    saveSession(s);
+    setSession(s);
+    setPage(s.branchId ? 'pos' : 'cash');
+    setCart([]);
+    setProducts([]);
+    setCategories([]);
+    setCashLogs([]);
+    setSummary({ income: 0, expense: 0, balance: 0 });
+    loadAll(s);
+  }
+
+  function logout() {
+    clearSession();
+    setSession(null);
+    setPage('pos');
+    setCart([]);
+    setProducts([]);
+    setCategories([]);
+    setCashLogs([]);
+    setSummary({ income: 0, expense: 0, balance: 0 });
   }
 
   async function resetCashLogs() {
@@ -112,15 +137,20 @@ function App() {
     setTimeout(() => setToast(''), 5000);
   }
 
-  function logout() {
-    clearSession();
-    setSession(null);
-    setCart([]);
-  }
+  // Load data saat session berubah
+  useEffect(() => {
+    if (session) loadAll(session);
+  }, [session?.id]);
 
-  useEffect(() => { loadAll(); }, []);
-  useEffect(() => { if (page === 'pos') setTimeout(() => barcodeRef.current?.focus(), 100); }, [page]);
-  useEffect(() => { if (page === 'cash' || page === 'dashboard') loadAll(); }, [page]);
+  useEffect(() => {
+    if (session && page === 'pos') setTimeout(() => barcodeRef.current?.focus(), 100);
+  }, [page, session?.id]);
+
+  useEffect(() => {
+    if (session && (page === 'cash' || page === 'dashboard')) loadAll(session);
+  }, [page]);
+
+  if (!session) return <LoginPage onLogin={handleLogin} />;
 
   const filteredProducts = useMemo(() => {
     const q = query.toLowerCase();
@@ -168,7 +198,7 @@ function App() {
     setToast(`Transaksi ${data.transaction.invoiceNo} berhasil.`);
     setCart([]); setPaidAmount(''); setReferenceNo('');
     setPrintReady(true);
-    await loadAll();
+    await loadAll(session);
     setTimeout(() => setToast(''), 5000);
   }
 
@@ -179,8 +209,6 @@ function App() {
     setReceipt(null);
   }
 
-  const branchLabel = session.branchName || 'Semua Cabang';
-
   return (
     <div className="app">
       {toast && <div className="toast-banner no-print">{toast}</div>}
@@ -189,6 +217,7 @@ function App() {
         <div className="branch-badge">{branchLabel}</div>
         <div className="user-info">👤 {session.username} <span className={`role-tag ${session.role}`}>{session.role}</span></div>
         {branchId && <button onClick={() => setPage('pos')} className={page === 'pos' ? 'active' : ''}><ShoppingCart size={20}/> Kasir</button>}
+        {branchId && <button onClick={() => setPage('menu')} className={page === 'menu' ? 'active' : ''}>🍽️ Menu & Harga</button>}
         {branchId && <button onClick={() => setPage('inventory')} className={page === 'inventory' ? 'active' : ''}><Package size={20}/> Inventory</button>}
         <button onClick={() => setPage('cash')} className={page === 'cash' ? 'active' : ''}><Wallet size={20}/> Buku Kas</button>
         <button onClick={() => setPage('dashboard')} className={page === 'dashboard' ? 'active' : ''}><BarChart3 size={20}/> Dashboard</button>
@@ -197,7 +226,8 @@ function App() {
 
       <nav className="mobile-nav no-print">
         {branchId && <button onClick={() => setPage('pos')} className={page === 'pos' ? 'active' : ''}><ShoppingCart size={18}/> Kasir</button>}
-        {branchId && <button onClick={() => setPage('inventory')} className={page === 'inventory' ? 'active' : ''}><Package size={18}/> Inventory</button>}
+        {branchId && <button onClick={() => setPage('menu')} className={page === 'menu' ? 'active' : ''}>🍽️ Menu</button>}
+        {branchId && <button onClick={() => setPage('inventory')} className={page === 'inventory' ? 'active' : ''}><Package size={18}/> Stok</button>}
         <button onClick={() => setPage('cash')} className={page === 'cash' ? 'active' : ''}><Wallet size={18}/> Kas</button>
         <button onClick={() => setPage('dashboard')} className={page === 'dashboard' ? 'active' : ''}><BarChart3 size={18}/> Dashboard</button>
         <button onClick={logout}><LogOut size={18}/> Keluar</button>
@@ -206,8 +236,9 @@ function App() {
       <main className="main no-print">
         {page === 'pos' && branchId && <POSPage {...{ products: filteredProducts, categories, query, setQuery, cart, addToCart, updateQty, setCart, barcodeRef, handleBarcode, total, paymentMethod, setPaymentMethod, paidAmount, setPaidAmount, referenceNo, setReferenceNo, change, checkout, printReady, printReceipt }} />}
         {page === 'pos' && !branchId && <div className="panel"><p>Owner tidak memiliki cabang — gunakan menu Buku Kas atau Dashboard.</p></div>}
-        {page === 'inventory' && branchId && <Inventory products={products} categories={categories} loadAll={loadAll} branchId={branchId} isOwner={isOwner} />}
-        {page === 'cash' && <CashPage cashLogs={cashLogs} loadAll={loadAll} resetCashLogs={resetCashLogs} branchId={branchId} isOwner={isOwner} session={session} />}
+        {page === 'menu' && branchId && <MenuPage products={products} categories={categories} loadAll={() => loadAll(session)} branchId={branchId} isOwner={isOwner} />}
+        {page === 'inventory' && branchId && <Inventory products={products} categories={categories} loadAll={() => loadAll(session)} branchId={branchId} isOwner={isOwner} />}
+        {page === 'cash' && <CashPage cashLogs={cashLogs} loadAll={() => loadAll(session)} resetCashLogs={resetCashLogs} branchId={branchId} isOwner={isOwner} session={session} />}
         {page === 'dashboard' && <Dashboard summary={summary} products={products} cashLogs={cashLogs} resetCashLogs={resetCashLogs} isOwner={isOwner} />}
       </main>
 
@@ -600,6 +631,201 @@ function Dashboard({ summary, products, cashLogs, resetCashLogs, isOwner }) {
         <div className="panel">
           <h3 style={{marginTop:0}}>⚠️ Low Stock Alert</h3>
           {low.length ? <div style={{display:'grid',gap:'8px'}}>{low.map(p => <p key={p.id} className="danger" style={{margin:0,fontSize:'13px'}}>{p.name} sisa {p.stock} pcs</p>)}</div> : <p>Semua stok aman ✓</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Menu & Harga Page ─────────────────────────────────
+function MenuPage({ products, categories, loadAll, branchId, isOwner }) {
+  const blank = { name: '', categoryId: '', sellingPrice: '', costPrice: '', stock: '99', minStock: '5', sku: '', barcode: '' };
+  const [form, setForm] = useState(blank);
+  const [editingId, setEditingId] = useState(null);
+  const [filterCat, setFilterCat] = useState('');
+  const [newCategory, setNewCategory] = useState('');
+  const [showCatForm, setShowCatForm] = useState(false);
+  const API_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+  function generateSKU(name) {
+    if (!name) return '';
+    const words = name.trim().toUpperCase().split(/\s+/);
+    return words.map(w => w.slice(0, 3)).join('-').slice(0, 12) + '-' + String(Math.floor(Math.random() * 900) + 100);
+  }
+  function generateBarcode() {
+    return ('899' + String(Date.now()).slice(-7) + String(Math.floor(Math.random() * 1000)).padStart(3, '0')).slice(0, 13);
+  }
+
+  function handleNameChange(val) {
+    setForm(prev => ({
+      ...prev, name: val,
+      sku: prev.sku === '' ? generateSKU(val) : prev.sku,
+      barcode: prev.barcode === '' ? generateBarcode() : prev.barcode
+    }));
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    const url = `${API_URL}/products${editingId ? '/' + editingId : ''}?branchId=${branchId}`;
+    const res = await fetch(url, {
+      method: editingId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...form, branchId })
+    });
+    const data = await res.json();
+    if (!res.ok) return alert(data?.message || 'Gagal menyimpan');
+    setForm(blank); setEditingId(null); loadAll();
+  }
+
+  async function del(id) {
+    if (confirm('Hapus menu ini?')) {
+      await fetch(`${API_URL}/products/${id}?branchId=${branchId}`, { method: 'DELETE' });
+      loadAll();
+    }
+  }
+
+  async function saveCategory(e) {
+    e.preventDefault();
+    if (!newCategory.trim()) return;
+    await fetch(`${API_URL}/categories?branchId=${branchId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newCategory.trim(), branchId })
+    });
+    setNewCategory(''); setShowCatForm(false); loadAll();
+  }
+
+  const filtered = filterCat ? products.filter(p => p.categoryId === Number(filterCat)) : products;
+
+  // Group produk per kategori untuk tampilan menu
+  const grouped = categories.map(cat => ({
+    ...cat,
+    items: filtered.filter(p => p.categoryId === cat.id)
+  })).filter(g => g.items.length > 0);
+  const uncategorized = filtered.filter(p => !p.categoryId);
+
+  return (
+    <div>
+      <div className="topbar">
+        <h2>🍽️ Menu & Harga</h2>
+        <span>{isOwner ? 'Kelola menu dan harga' : 'Daftar menu'}</span>
+      </div>
+
+      {/* Form tambah/edit menu - hanya owner */}
+      {isOwner && (
+        <div className="panel inv-form-panel">
+          <div className="inv-form-header">
+            <h3 style={{margin:0}}>{editingId ? '✏️ Edit Menu' : '➕ Tambah Menu Baru'}</h3>
+            <button type="button" className="btn-secondary" onClick={() => setShowCatForm(v => !v)}>
+              + Kategori Baru
+            </button>
+          </div>
+
+          {showCatForm && (
+            <form className="cat-form" onSubmit={saveCategory}>
+              <input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Nama kategori (misal: Minuman, Makanan Berat)" required />
+              <button className="checkout" type="submit">Simpan</button>
+              <button type="button" className="btn-secondary" onClick={() => setShowCatForm(false)}>Batal</button>
+            </form>
+          )}
+
+          <form onSubmit={save}>
+            <div className="inv-grid">
+              <div className="inv-field full">
+                <label>Nama Menu <span className="req">*</span></label>
+                <input value={form.name} onChange={e => handleNameChange(e.target.value)} placeholder="Contoh: Nasi Timbel Spesial" required />
+              </div>
+              <div className="inv-field">
+                <label>Kategori</label>
+                <select value={form.categoryId} onChange={e => setForm({...form, categoryId: e.target.value})}>
+                  <option value="">Pilih Kategori</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="inv-field">
+                <label>Harga Modal (Rp) <span className="req">*</span></label>
+                <input type="number" value={form.costPrice} onChange={e => setForm({...form, costPrice: e.target.value})} placeholder="0" required min="0" />
+              </div>
+              <div className="inv-field">
+                <label>Harga Jual (Rp) <span className="req">*</span></label>
+                <input type="number" value={form.sellingPrice} onChange={e => setForm({...form, sellingPrice: e.target.value})} placeholder="0" required min="0" />
+              </div>
+              <div className="inv-field">
+                <label>Stok <span className="auto-tag">opsional</span></label>
+                <input type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} placeholder="99" min="0" />
+              </div>
+              <div className="inv-field">
+                <label>SKU <span className="auto-tag">otomatis</span></label>
+                <div className="input-with-btn">
+                  <input value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} placeholder="Otomatis dari nama" />
+                  <button type="button" className="btn-regen" onClick={() => setForm(p => ({...p, sku: generateSKU(p.name)}))}>🔄</button>
+                </div>
+              </div>
+            </div>
+            <div className="inv-actions">
+              <button className="checkout" type="submit">{editingId ? '💾 Update Menu' : '✅ Tambah ke Menu'}</button>
+              {editingId && <button type="button" className="btn-secondary" onClick={() => { setForm(blank); setEditingId(null); }}>Batal</button>}
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Filter kategori */}
+      <div className="menu-filter-bar panel" style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center',padding:'12px 16px'}}>
+        <span style={{fontWeight:600,fontSize:13}}>Filter:</span>
+        <button className={`cat-chip ${filterCat === '' ? 'active' : ''}`} onClick={() => setFilterCat('')}>Semua</button>
+        {categories.map(c => (
+          <button key={c.id} className={`cat-chip ${filterCat === String(c.id) ? 'active' : ''}`} onClick={() => setFilterCat(String(c.id))}>{c.name}</button>
+        ))}
+      </div>
+
+      {/* Tampilan menu per kategori */}
+      {grouped.map(group => (
+        <div key={group.id} className="panel" style={{marginBottom:12}}>
+          <h3 style={{margin:'0 0 12px',color:'var(--primary)',borderBottom:'2px solid #e2e8f0',paddingBottom:'8px'}}>
+            {group.name} <span style={{color:'#9ca3af',fontWeight:400,fontSize:13}}>({group.items.length} menu)</span>
+          </h3>
+          <div className="menu-grid">
+            {group.items.map(p => (
+              <div key={p.id} className="menu-card">
+                <div className="menu-card-name">{p.name}</div>
+                <div className="menu-card-price">{money(p.sellingPrice)}</div>
+                <div className="menu-card-meta">Modal: {money(p.costPrice)} • Stok: {p.stock}</div>
+                {isOwner && (
+                  <div className="menu-card-actions">
+                    <button className="btn-edit-sm" onClick={() => { setEditingId(p.id); setForm({...p, categoryId: p.categoryId || ''}); }}>Edit</button>
+                    <button className="btn-del-sm" onClick={() => del(p.id)}>Hapus</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {uncategorized.length > 0 && (
+        <div className="panel" style={{marginBottom:12}}>
+          <h3 style={{margin:'0 0 12px',color:'#6b7280'}}>Tanpa Kategori</h3>
+          <div className="menu-grid">
+            {uncategorized.map(p => (
+              <div key={p.id} className="menu-card">
+                <div className="menu-card-name">{p.name}</div>
+                <div className="menu-card-price">{money(p.sellingPrice)}</div>
+                <div className="menu-card-meta">Modal: {money(p.costPrice)} • Stok: {p.stock}</div>
+                {isOwner && (
+                  <div className="menu-card-actions">
+                    <button className="btn-edit-sm" onClick={() => { setEditingId(p.id); setForm({...p, categoryId: ''}); }}>Edit</button>
+                    <button className="btn-del-sm" onClick={() => del(p.id)}>Hapus</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {filtered.length === 0 && (
+        <div className="panel" style={{textAlign:'center',color:'#9ca3af',padding:'40px'}}>
+          Belum ada menu. {isOwner ? 'Tambahkan menu di atas.' : ''}
         </div>
       )}
     </div>

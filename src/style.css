@@ -261,3 +261,18 @@ td button:active{transform:scale(0.95)}
 .cat-form{display:flex;gap:8px;margin-bottom:14px;align-items:center}
 .cat-form input{flex:1;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px}
 @media(max-width:600px){.inv-grid{grid-template-columns:1fr}.inv-field.full{grid-column:1}}
+
+/* Menu & Harga */
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.menu-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px;transition:box-shadow .15s}
+.menu-card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+.menu-card-name{font-weight:700;font-size:13px;color:#0f172a;line-height:1.3}
+.menu-card-price{font-size:16px;font-weight:800;color:var(--primary);margin-top:2px}
+.menu-card-meta{font-size:11px;color:#9ca3af}
+.menu-card-actions{display:flex;gap:6px;margin-top:8px}
+.btn-edit-sm{flex:1;padding:5px;background:#dbeafe;color:#1d4ed8;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
+.btn-edit-sm:hover{background:#bfdbfe}
+.btn-del-sm{flex:1;padding:5px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
+.btn-del-sm:hover{background:#fecaca}
+.cat-chip{padding:5px 12px;border-radius:20px;border:1px solid #e2e8f0;background:#f8fafc;font-size:12px;font-weight:600;cursor:pointer;color:#374151}
+.cat-chip.active,.cat-chip:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
